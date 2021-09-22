@@ -68,7 +68,7 @@ class Packet
             $bin .= hex2bin(str_pad(dechex($code), 2, '0', STR_PAD_LEFT));
         }
         $packet->rawBin = $bin;
-        $packet->getPayloadLength();
+        $packet->getPayloadLength(false);
         $packet->getMaskIndex();
         $packet->getMaskBinArr();
         $packet->getPayloadBinArr();
@@ -206,17 +206,33 @@ class Packet
         $this->maskBinArr = array_slice($this->rawBinArr, $this->maskIndex, 32);
     }
 
-    private function getPayloadLength()
+    private function getPayloadLength($readExtFromConn = true)
     {
         $lengthBinStr = join(array_slice($this->rawBinArr, 9, 7));
         $length = 0;
         if ($lengthBinStr == '1111110') {
             $this->payloadLenExt = 16;
+            if ($readExtFromConn) {
+                $read = socket_read($this->conn->conn(), 2);
+                if (! $read) {
+                    return false;
+                }
+                $this->rawBin .= $read;
+                $this->bin2Arr();
+            }
             for ($i = 16; $i < 32;$i++) {
                 $length += $this->rawBinArr[$i] * pow(2, 32 - 1 - $i);
             }
         } elseif ($lengthBinStr == '1111111') {
             $this->payloadLenExt = 64;
+            if ($readExtFromConn) {
+                $read = socket_read($this->conn->conn(), 8);
+                if (! $read) {
+                    return false;
+                }
+                $this->rawBin .= $read;
+                $this->bin2Arr();
+            }
             for ($i = 16; $i < 80;$i++) {
                 $length += $this->rawBinArr[$i] * pow(2, 80 - 1 - $i);
             }
