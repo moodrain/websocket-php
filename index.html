@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moodrain WebSocket Test</title>
+    <link rel="stylesheet" href="https://s1.moodrain.cn/lib/element-ui/index.css">
+</head>
+
+<body>
+    <div id="app">
+        <div style="width: 100%;text-align: center;">
+            <el-button @click="newConn" type="primary">New Connection</el-button>
+        </div>
+        <el-divider></el-divider>
+        <el-card v-for="conn in conns" key:="conn.id" style="margin: 5px auto;width: 50%">
+            <el-input v-model="conn.input">
+                <template slot="append">
+                    <el-button @click="send(conn)">Send</el-button>
+                    <el-button @click="close(conn)">Close</el-button>
+                </template>
+            </el-input>
+            <el-input :value="conn.msgs.join('\n')" readonly type="textarea"></el-input>
+        </el-card>
+    </div>
+    <script src="https://s1.moodrain.cn/lib/vue/index.js"></script>
+    <script src="https://s1.moodrain.cn/lib/element-ui/index.js"></script>
+    <script>
+        const url = 'ws://127.0.0.1:8001'
+        let id = 1
+        let app = new Vue({
+            el: '#app',
+            data() {
+                return {
+                    conns: [],
+                }
+            },
+            methods: {
+                newConn() {
+                    let ws = new WebSocket(url)
+                    let conn = {
+                        id,
+                        ws,
+                        msgs: [],
+                        input: '',
+                    }
+                    ws.addEventListener('close', () => {
+                        let index = this.conns.findIndex(c => c == conn)
+                        this.conns.splice(index, 1)
+                    })
+                    ws.addEventListener('message', () => {
+                        let index = this.conns.findIndex(c => c == conn)
+                        this.conns[index].msgs.unshift(event.data)
+                    })
+                    this.conns.push(conn)
+                    id++
+                },
+                send(conn) {
+                    let input = conn.input
+                    if (!input) {
+                        return
+                    }
+                    conn.input = ''
+                    conn.ws.send(input)
+                },
+                close(conn) {
+                    conn.ws.close()
+                }
+            },
+        })
+    </script>
+</body>
+
+</html>
