@@ -17,8 +17,8 @@ class Server
     public function __construct()
     {
         $this->onOpen = function($client) {return true;};
-        $this->onMessage = function($client, $packet) {return true;};
-        $this->onSend = function($client, $packet) {return true;};
+        $this->onMessage = function($client, $message) {return true;};
+        $this->onSend = function($client, $message) {return true;};
         $this->onClose = function($client) {return true;};
     }
 
@@ -50,9 +50,24 @@ class Server
         $this->waitNewClient();
     }
 
+    public function startReadFile($file)
+    {
+        $reader = new Reader();
+        $reader->setFile($file);
+        $content = '';
+        while(true) {
+            $packet = Packet::from($reader);
+            $content .= $packet->payloadStr();
+            if (! $packet || $packet->isFinish()) {
+                break;
+            }
+        }
+        $callback = $this->onMessage;
+        $callback(new Connection(0), $content);
+    }
+
     private function waitNewClient()
     {
-
         while(true) {
             $client = socket_accept($this->connection);
             if ($client) {
@@ -76,13 +91,19 @@ class Server
                     if (! $packet) {
                         continue;
                     }
-                    switch ($packet->msgType()) {
+                    $type = $packet->msgType();
+                    $content = $packet->payloadStr();
+                    while ($packet && ! $packet->isFinish()) {
+                        $packet = $this->readPacket($client);
+                        $content .= $packet->payloadStr();
+                    }
+                    switch ($type) {
                         case Packet::MSG_TYPE_CLOSE:
                             $this->close($client);
                             break;
                         case Packet::MSG_TYPE_TXT:
                             $callback = $this->onMessage;
-                            $callback($client, $packet);
+                            $callback($client, $content);
                             break;
                     }
                 }
@@ -128,7 +149,9 @@ class Server
 
     private function readPacket(Connection $client)
     {
-        return Packet::from($client);
+        $reader = new Reader();
+        $reader->setConn($client);
+        return Packet::from($reader);
     }
 
     private function readHttp(Connection $client)
@@ -145,7 +168,7 @@ class Server
     {
         $packet = Packet::createTextPacket($data);
         $callback = $this->onSend;
-        if ($callback($client, $packet) === false) {
+        if ($callback($client, $packet->payloadStr()) === false) {
             return;
         }
         $this->send($client, $packet->rawBin());

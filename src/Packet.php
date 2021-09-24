@@ -7,6 +7,8 @@ class Packet
 {
     /** @var Connection */
     private $conn;
+    /* @var Reader **/
+    private $reader;
     private $rawBin;
     private $rawBinArr;
     private $isFinish;
@@ -27,11 +29,17 @@ class Packet
     const MSG_TYPE_PING = 9;
     const MSG_TYPE_PONG = 10;
 
-    public static function from(Connection $conn)
+    public function reader()
+    {
+        return $this->reader;
+    }
+
+    public static function from(Reader $reader)
     {
         $packet = new Packet();
-        $packet->conn = $conn;
-        $packet->readFromConn();
+        $packet->conn = $reader->conn();
+        $packet->reader = $reader;
+        $packet->read();
         if ($packet->rawBin) {
             return $packet;
         }
@@ -123,7 +131,7 @@ class Packet
         return $this->payloadStr;
     }
 
-    private function readFromConn()
+    private function read()
     {
         if (! $this->readHead()) {
             return;
@@ -134,7 +142,7 @@ class Packet
 
     private function readHead()
     {
-        $read = socket_read($this->conn->conn(), 2);
+        $read = $this->reader->read(2);
         if (! $read) {
             return false;
         }
@@ -149,12 +157,7 @@ class Packet
         $this->getPayloadLength();
         $this->getMaskIndex();
         if ($this->isMasked) {
-            $headLen = ($this->maskIndex / 8) + 4;
-        }  else {
-            $headLen = 2 + $this->payloadLenExt / 8;
-        }
-        if ($headLen - 2 > 0) {
-            $read = socket_read($this->conn->conn(), $headLen - 2);
+            $read = $this->reader->read(4);
             $this->rawBin .= $read;
             $this->bin2Arr();
             $this->getMaskBinArr();
@@ -164,7 +167,7 @@ class Packet
 
     private function readBody()
     {
-        $read = socket_read($this->conn->conn(), $this->payloadLen / 8);
+        $read = $this->reader->read($this->payloadLen / 8);
         if (! $read) {
             return;
         }
@@ -213,7 +216,7 @@ class Packet
         if ($lengthBinStr == '1111110') {
             $this->payloadLenExt = 16;
             if ($readExtFromConn) {
-                $read = socket_read($this->conn->conn(), 2);
+                $read = $this->reader->read(2);
                 if (! $read) {
                     return false;
                 }
@@ -226,7 +229,7 @@ class Packet
         } elseif ($lengthBinStr == '1111111') {
             $this->payloadLenExt = 64;
             if ($readExtFromConn) {
-                $read = socket_read($this->conn->conn(), 8);
+                $read = $this->reader->read(8);
                 if (! $read) {
                     return false;
                 }
