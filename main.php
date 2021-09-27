@@ -8,7 +8,6 @@ require __DIR__ . '/vendor/autoload.php';
 
 $server = new Server();
 
-
 $server->on('open', function(Connection $client) use ($server) {
     echo 'client connect, id: ' . $client->id() . ' total count: ' . count($server->clients()), PHP_EOL;
 });
