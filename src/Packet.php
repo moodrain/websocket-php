@@ -46,12 +46,13 @@ class Packet
         return null;
     }
 
-    public static function createTextPacket($text)
+    public static function create($type, $data, $finish = true)
     {
         $packet = new Packet();
-        $packet->addBinArr(1,0,0,0);
-        $packet->addBinArr(0,0,0,1);
-        $len = strlen($text);
+        $packet->isFinish = $finish;
+        $packet->addBinArr((int)$finish,0,0,0);
+        $packet->addBinArr(...str_split(str_pad(decbin($type), 4, '0', STR_PAD_LEFT)));
+        $len = strlen($data);
         if ($len <= 125) {
             $packet->addBinArr(...str_split(str_pad(decbin($len), 8, '0', STR_PAD_LEFT)));
         } elseif ($len > 125 && $len <= 255) {
@@ -62,7 +63,7 @@ class Packet
             $packet->addBinArr(...str_split(str_pad(decbin($len), 64, '0', STR_PAD_LEFT)));
         }
         for ($i = 0; $i < $len; $i++) {
-            $ord = ord($text[$i]);
+            $ord = ord($data[$i]);
             $binArr = str_split(str_pad(decbin($ord), 8, '0', STR_PAD_LEFT));
             $packet->addBinArr(...$binArr);
         }
@@ -80,7 +81,7 @@ class Packet
         $packet->getMaskIndex();
         $packet->getMaskBinArr();
         $packet->getPayloadBinArr();
-        $packet->payloadStr = $text;
+        $packet->payloadStr = $data;
         return $packet;
     }
 

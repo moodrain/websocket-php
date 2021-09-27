@@ -7,6 +7,7 @@ class Server
     private $connection;
     private $clients = [];
     private $idAutoIncrement = 1;
+    private $sendPacketLenLimit = 254;
 
     private $onOpen;
     private $onMessage;
@@ -20,6 +21,16 @@ class Server
         $this->onMessage = function($client, $message) {return true;};
         $this->onSend = function($client, $message) {return true;};
         $this->onClose = function($client) {return true;};
+    }
+
+    public function sendPacketLenLimit()
+    {
+        return $this->sendPacketLenLimit;
+    }
+
+    public function setSendPacketLenLimit($limit)
+    {
+        $this->sendPacketLenLimit = $limit;
     }
 
     public function setIdAutoIncrement($id) {
@@ -54,16 +65,17 @@ class Server
     {
         $reader = new Reader();
         $reader->setFile($file);
-        $content = '';
+        $conn = new Connection(0);
+        $msg = new Message($conn);
         while(true) {
             $packet = Packet::from($reader);
-            $content .= $packet->payloadStr();
+            $msg->addPacket($packet);
             if (! $packet || $packet->isFinish()) {
                 break;
             }
         }
         $callback = $this->onMessage;
-        $callback(new Connection(0), $content);
+        $callback($conn, $msg);
     }
 
     private function waitNewClient()
@@ -91,11 +103,12 @@ class Server
                     if (! $packet) {
                         continue;
                     }
+                    $msg = new Message($client);
+                    $msg->addPacket($packet);
                     $type = $packet->msgType();
-                    $content = $packet->payloadStr();
                     while ($packet && ! $packet->isFinish()) {
                         $packet = $this->readPacket($client);
-                        $content .= $packet->payloadStr();
+                        $msg->addPacket($packet);
                     }
                     switch ($type) {
                         case Packet::MSG_TYPE_CLOSE:
@@ -103,7 +116,7 @@ class Server
                             break;
                         case Packet::MSG_TYPE_TXT:
                             $callback = $this->onMessage;
-                            $callback($client, $content);
+                            $callback($client, $msg);
                             break;
                     }
                 }
@@ -164,14 +177,25 @@ class Server
         socket_write($client->conn(), $data, strlen($data));
     }
 
-    public function sendPacket(Connection $client, $data)
+    public function sendMessage(Connection $client, $type, $data)
     {
-        $packet = Packet::createTextPacket($data);
+        $msg = new Message($client);
+        $leftLen = strlen($data);
+        $limit = $this->sendPacketLenLimit;
+        $start = 0;
+        while ($leftLen > 0) {
+            $packet = Packet::create($start == 0 ? $type : Packet::MSG_TYPE_PIECE, substr($data, $start, $limit), $limit > $leftLen);
+            $msg->addPacket($packet);
+            $start += $limit;
+            $leftLen -= $limit;
+        }
         $callback = $this->onSend;
-        if ($callback($client, $packet->payloadStr()) === false) {
+        if ($callback($client, $msg) === false) {
             return;
         }
-        $this->send($client, $packet->rawBin());
+        foreach ($msg->packets() as $packet) {
+            $this->send($client, $packet->rawBin());
+        }
     }
 
     public function close(Connection $client)
