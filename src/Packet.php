@@ -218,9 +218,6 @@ class Packet
             $this->payloadLenExt = 16;
             if ($readExtFromConn) {
                 $read = $this->reader->read(2);
-                if (! $read) {
-                    return false;
-                }
                 $this->rawBin .= $read;
                 $this->bin2Arr();
             }
@@ -231,9 +228,6 @@ class Packet
             $this->payloadLenExt = 64;
             if ($readExtFromConn) {
                 $read = $this->reader->read(8);
-                if (! $read) {
-                    return false;
-                }
                 $this->rawBin .= $read;
                 $this->bin2Arr();
             }

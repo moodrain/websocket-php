@@ -17,7 +17,8 @@ class Connection
         $this->activeAt = time();
     }
 
-    public function id() {
+    public function id()
+    {
         return $this->id;
     }
 
