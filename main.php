@@ -2,6 +2,7 @@
 
 use Muyu\WebSocket\Connection;
 use Muyu\WebSocket\Message;
+use Muyu\WebSocket\Packet;
 use Muyu\WebSocket\Server;
 
 require __DIR__ . '/vendor/autoload.php';
@@ -17,11 +18,11 @@ $server->on('close', function(Connection $client) use ($server) {
 });
 
 $server->on('message', function(Connection $client, Message $message) use ($server) {
-    $server->sendMessage($client, \Muyu\WebSocket\Packet::MSG_TYPE_TXT, 'get ' . $message->content());
+    $server->sendMessage($client, Packet::MSG_TYPE_TXT, 'get ' . $message->content());
 });
 
 $server->on('send', function(Connection $client, Message $message) use ($server) {
-    echo 'client id ' . $client->id() . ' send ' . $message->content(), PHP_EOL;
+    echo 'client id ' . $client->id() . ' send length ' . $message->length(), PHP_EOL;
 });
 
 $server->start();

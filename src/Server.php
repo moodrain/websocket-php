@@ -7,7 +7,7 @@ class Server
     private $connection;
     private $clients = [];
     private $idAutoIncrement = 1;
-    private $sendPacketLenLimit = 254;
+    private $sendPacketLenLimit = 255;
 
     private $onOpen;
     private $onMessage;
@@ -169,7 +169,7 @@ class Server
 
     private function readHttp(Connection $client)
     {
-        return socket_read($client->conn(), 1024);
+        return socket_read($client->conn(), 4096);
     }
 
     public function send(Connection $client, $data)
@@ -184,7 +184,7 @@ class Server
         $limit = $this->sendPacketLenLimit;
         $start = 0;
         while ($leftLen > 0) {
-            $packet = Packet::create($start == 0 ? $type : Packet::MSG_TYPE_PIECE, substr($data, $start, $limit), $limit > $leftLen);
+            $packet = Packet::create($start == 0 ? $type : Packet::MSG_TYPE_PIECE, substr($data, $start, $limit), $limit >= $leftLen);
             $msg->addPacket($packet);
             $start += $limit;
             $leftLen -= $limit;
