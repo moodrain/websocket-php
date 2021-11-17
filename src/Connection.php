@@ -6,13 +6,15 @@ class Connection
 {
     private $id;
     private $conn;
+    private $server;
     private $handshake = false;
     private $createdAt;
     private $activeAt;
 
-    public function __construct($id)
+    public function __construct($id, Server $server = null)
     {
         $this->id = $id;
+        $this->server = $server;
         $this->createdAt = time();
         $this->activeAt = time();
     }
@@ -20,6 +22,11 @@ class Connection
     public function id()
     {
         return $this->id;
+    }
+
+    public function server()
+    {
+        return $this->server;
     }
 
     public function createdAt()

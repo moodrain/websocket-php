@@ -16,7 +16,7 @@ class Reader
 
     public function __construct()
     {
-        $this->conn = new Connection(0);
+        $this->conn = new Connection(0, null);
         $this->file = '';
     }
 
@@ -40,7 +40,17 @@ class Reader
     public function read($size)
     {
         if ($this->type == self::TYPE_CONN) {
-            return socket_read($this->conn->conn(), $size);
+            $read = @socket_read($this->conn->conn(), $size);
+            if (! $read) {
+                $errCode = socket_last_error($this->conn->conn());
+                if ($errCode === 10035) {
+                    return null;
+                } else {
+                    $this->conn->server()->close($this->conn);
+                    return false;
+                }
+            }
+            return $read;
         } elseif ($this->type == self::TYPE_FILE) {
             $content = file_get_contents($this->file);
             if ($this->fileReadIndex >= strlen($content)) {

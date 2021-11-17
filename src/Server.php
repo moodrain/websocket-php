@@ -65,7 +65,7 @@ class Server
     {
         $reader = new Reader();
         $reader->setFile($file);
-        $conn = new Connection(0);
+        $conn = new Connection(0, $this);
         $msg = new Message($conn);
         while(true) {
             $packet = Packet::from($reader);
@@ -83,7 +83,7 @@ class Server
         while(true) {
             $client = socket_accept($this->connection);
             if ($client) {
-                $conn = new Connection($this->idAutoIncrement);
+                $conn = new Connection($this->idAutoIncrement, $this);
                 $conn->setConn($client);
                 $this->clients[] = $conn;
                 $this->idAutoIncrement++;
@@ -169,7 +169,17 @@ class Server
 
     private function readHttp(Connection $client)
     {
-        return socket_read($client->conn(), 4096);
+        $read = socket_read($client->conn(), 4096);
+        if (! $read) {
+            $errCode = @socket_last_error($client->conn());
+            if ($errCode === 10035) {
+                return null;
+            } else {
+                $this->close($client);
+                return false;
+            }
+        }
+        return $read;
     }
 
     public function send(Connection $client, $data)

@@ -14,7 +14,7 @@ $server->on('open', function(Connection $client) use ($server) {
 });
 
 $server->on('close', function(Connection $client) use ($server) {
-    echo 'client close  , id: ' . $client->id() . ' total count: ' . count($server->clients()), PHP_EOL;
+    echo 'client close , id: ' . $client->id() . ' total count: ' . count($server->clients()), PHP_EOL;
 });
 
 $server->on('message', function(Connection $client, Message $message) use ($server) {
